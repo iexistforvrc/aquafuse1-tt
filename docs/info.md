@@ -66,6 +66,8 @@ decision follows. A pass means the silicon reproduces the reference; it does not
   confounded. Treat any new site as needing recalibration and measurement.
 * Energy is **modelled**, not measured: about 3.5-3.8x lower than waking an M2-class GPU host for every frame
   (host figure scaled to an M3). No silicon power measurement exists.
+* Timing: the layout is signed off at **22.7 MHz (44 ns)** in every timing corner by Tiny Tapeout's flow. Slew and capacitance
+  warnings remain (see `docs/RELEASE_AND_RISKS.md`). Above 22.7 MHz only typical conditions are supported by the analysis.
 * Nothing has been fabricated yet; behaviour on silicon is unverified.
 
 ## External hardware

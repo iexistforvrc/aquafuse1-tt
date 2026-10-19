@@ -5,7 +5,7 @@ project:
   discord:      ""
   description:  "Sensor-direct always-on fish-presence wake gate: streaming INT8 CNN with a background model and a temporal head, no companion chip"
   language:     "SystemVerilog"
-  clock_hz:     26315789      # 38.0 ns, the period the layout is closed against (config.json CLOCK_PERIOD)
+  clock_hz:     22727272      # 44.0 ns, the period the layout is closed against in every corner (config.json CLOCK_PERIOD)
 
   # 8x4 = 32 tiles, 1378.16 x 511.36 um, the die the part is laid out on. 8x4 projects were accepted on
   # SKY 25a, 26a and 26b; the template's "up to 8x2" comment is stale. The risk is free slots (docs/RELEASE_AND_RISKS.md).

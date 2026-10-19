@@ -20,15 +20,19 @@ The verification evidence lives in the project repository (decisions 0102-0105),
 
 ## NOT verified (each is a way this can still fail)
 
-1. **The official flow closes this design only with the repair settings in `src/config.json`, and not cleanly.** r9
-   closed under OpenLane 2.0.0 with its own config. Tiny Tapeout's LibreLane 3.0.14 flow, given the r9 settings,
-   failed at clock-tree legalization (the newer repair step inserted 10,544 buffers where r9 had 4,581 and the die
-   overflowed). The recipe now in `config.json` (fanout limit 50, repair slew margin 35, no wire-length repair) ran
-   the whole flow on a GitHub runner in 3 h 27 min; `gds`, `precheck` and `gl_test` passed. Its signoff report is NOT
-   clean: setup violations remain in the three slow corners (31-74 endpoints each; typical and fast corners have none),
-   max-slew violations in four corners (including max_tt) and max-cap violations in all corners (11 in typical). Hold
-   and antenna are clean. That is worse than r9, which met every corner. Read the `gds` report; slow silicon may not
-   reach the target clock. The linter is ON, as in the template
+1. **The official flow closes this design only with the settings in `src/config.json`, at a 44 ns (22.7 MHz) clock,
+   and the signoff still carries slew and cap warnings.** r9 closed under OpenLane 2.0.0 at 38 ns. Tiny Tapeout's
+   LibreLane 3.0.14 flow, given the r9 repair settings, failed at clock-tree legalization (the newer repair step
+   inserted 10,544 buffers where r9 had 4,581 and the die overflowed). The recipe now in `config.json` (fanout limit
+   50, repair slew margin 35, no wire-length repair, 44 ns) was measured on a GitHub runner on an experiment branch
+   with the same RTL and settings (run 39241627806: `gds` 4 h 02 min, then `precheck` and `gl_test` passed): Magic
+   DRC, LVS and antenna clean; setup slack positive in every corner (worst +0.575 ns, max_ss); hold clean (worst
+   +0.180 ns). **Not clean:** max-slew violations remain (321 nets in max_ss, 225 in nom_ss, 132 in min_ss, 5-7 in
+   the typical corners) and max-cap violations in every corner (5 to 46 nets per corner); the worst slew and cap
+   values are not in the flow's artifacts. The same recipe at 38 ns (26.3 MHz) left setup misses of -1.6 to -2.8 ns in
+   the three slow corners, and at 40 ns they remained, so **the rated clock is 22.7 MHz**. Above it, only typical
+   conditions are supported by the analysis (the typical corners have about 2x headroom, the slow corners none).
+   Check that this commit's own `gds`, `precheck` and `gl_test` runs are green before paying. The linter is ON, as in the template
    (an earlier draft switched it off, as every project layout run did, and that would have failed the official job:
    the action's "Linter output" step `cat`s a lint log that is only written when the linter runs). A Verilator `-Wall`
    lint of `src/` with LibreLane's own flags gives 0 errors and 57 untriaged warnings; warnings do not fail the flow.
