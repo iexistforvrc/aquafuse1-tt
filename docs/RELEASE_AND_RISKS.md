@@ -20,10 +20,15 @@ The verification evidence lives in the project repository (decisions 0102-0105),
 
 ## NOT verified (each is a way this can still fail)
 
-1. **The official GDS action has not been run on this repository.** r9 closed under OpenLane 2.0.0 with its own
-   config; this submission is hardened by Tiny Tapeout's LibreLane flow with `src/config.json` (our r9 recipe on top of
-   the template defaults, which differ: 20 ns clock, density 60, margins). Margins were thin (slew 0.09 ns under the
-   limit, setup +0.9 ns). Run the `gds` workflow early and read the report. The linter is ON, as in the template
+1. **The official flow closes this design only with the repair settings in `src/config.json`, and not cleanly.** r9
+   closed under OpenLane 2.0.0 with its own config. Tiny Tapeout's LibreLane 3.0.14 flow, given the r9 settings,
+   failed at clock-tree legalization (the newer repair step inserted 10,544 buffers where r9 had 4,581 and the die
+   overflowed). The recipe now in `config.json` (fanout limit 50, repair slew margin 35, no wire-length repair) ran
+   the whole flow on a GitHub runner in 3 h 27 min; `gds`, `precheck` and `gl_test` passed. Its signoff report is NOT
+   clean: setup violations remain in the three slow corners (31-74 endpoints each; typical and fast corners have none),
+   max-slew violations in four corners (including max_tt) and max-cap violations in all corners (11 in typical). Hold
+   and antenna are clean. That is worse than r9, which met every corner. Read the `gds` report; slow silicon may not
+   reach the target clock. The linter is ON, as in the template
    (an earlier draft switched it off, as every project layout run did, and that would have failed the official job:
    the action's "Linter output" step `cat`s a lint log that is only written when the linter runs). A Verilator `-Wall`
    lint of `src/` with LibreLane's own flags gives 0 errors and 57 untriaged warnings; warnings do not fail the flow.
