@@ -1,0 +1,7 @@
+# Build and simulation products
+test/sim_build/
+test/results.xml
+test/tb.fst
+test/__pycache__/
+test/output/
+/runs/

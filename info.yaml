@@ -1,0 +1,70 @@
+# Tiny Tapeout project information
+project:
+  title:        "AquaFuse-1: fish-presence wake gate"
+  author:       "iexistforvrc"
+  discord:      ""
+  description:  "Sensor-direct always-on fish-presence wake gate: streaming INT8 CNN with a background model and a temporal head, no companion chip"
+  language:     "SystemVerilog"
+  clock_hz:     26315789      # 38.0 ns, the period the layout is closed against (config.json CLOCK_PERIOD)
+
+  # 8x4 = 32 tiles, 1378.16 x 511.36 um, the die the part is laid out on. 8x4 projects were accepted on
+  # SKY 25a, 26a and 26b; the template's "up to 8x2" comment is stale. The risk is free slots (docs/RELEASE_AND_RISKS.md).
+  tiles: "8x4"
+
+  top_module:  "tt_um_aquafuse_stream12c"
+
+  # The .svh headers (aquafuse_chip.svh, aquafuse_round.svh) sit beside these in src/.
+  # Keep PROJECT_SOURCES in test/Makefile in step with this list.
+  source_files:
+    - "aquafuse_icg.sv"
+    - "aquafuse_sel.sv"
+    - "aquafuse_sensor_if.sv"
+    - "aquafuse_stem_accum.sv"
+    - "aquafuse_conv_stage.sv"
+    - "aquafuse_rom_stem.sv"
+    - "aquafuse_rom_b1.sv"
+    - "aquafuse_rom_b2.sv"
+    - "aquafuse_rom_obj.sv"
+    - "aquafuse_bg_fifo.sv"
+    - "aquafuse_bg_store.sv"
+    - "aquafuse_bg_block.sv"
+    - "aquafuse_temporal_head.sv"
+    - "tt_um_aquafuse_stream12c.sv"
+
+# The sensor drives the chip directly: ui_in is the pixel byte, uio_in[0] is the pixel clock and
+# uio_in[1] the frame sync. The host WAKES ON uo_out[3] (3-of-11 popcount held 10 frames). ui_in is
+# UNSIGNED 0..255 and is biased by 128 internally. uio_in[4:2] is a 3-wire config load. Every uio pin
+# is an input (uio_oe = 0, uio_out = 0).
+pinout:
+  # Inputs
+  ui[0]: "sensor pixel byte bit 0 (unsigned)"
+  ui[1]: "sensor pixel byte bit 1"
+  ui[2]: "sensor pixel byte bit 2"
+  ui[3]: "sensor pixel byte bit 3"
+  ui[4]: "sensor pixel byte bit 4"
+  ui[5]: "sensor pixel byte bit 5"
+  ui[6]: "sensor pixel byte bit 6"
+  ui[7]: "sensor pixel byte bit 7 (MSB)"
+
+  # Outputs
+  uo[0]: "alarm: raw per-frame comparator"
+  uo[1]: "result_valid: high once a frame has been scored"
+  uo[2]: "overrun: sticky, the sensor delivered more pixels than a frame holds"
+  uo[3]: "WAKE: M-of-N popcount with hold; the bit the host wakes on"
+  uo[4]: "overrun_frame: this frame overran"
+  uo[5]: "cfg_sdo: config shift register MSB, for read-back"
+  uo[6]: "cfg_loaded: the config register has been loaded"
+  uo[7]: "bg_resynced: sticky, the background store lost alignment and reseeded"
+
+  # Bidirectional pins (all inputs)
+  uio[0]: "PCLK: sensor pixel clock, one pixel per rising edge"
+  uio[1]: "VSYNC: high for the duration of a frame"
+  uio[2]: "CFG_SCK: config shift clock"
+  uio[3]: "CFG_SDI: config serial data in"
+  uio[4]: "CFG_LOAD: config load strobe"
+  uio[5]: ""
+  uio[6]: ""
+  uio[7]: ""
+
+# Do not change!
+yaml_version: 6
