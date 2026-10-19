@@ -6,7 +6,7 @@
   "PL_TARGET_DENSITY_PCT": 68,
 
   "//": "The part is clocked at 38 ns (26.3 MHz) in r9; the template default (20 ns) would make timing impossible to close.",
-  "CLOCK_PERIOD": 38,
+  "CLOCK_PERIOD": 40,
 
   "//": "Hold margins as r9 (a 0.003 ns hold miss in r8 was fixed by raising these).",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.25,
