@@ -64,8 +64,11 @@ decision follows. A pass means the silicon reproduces the reference; it does not
 * Held out by whole river, the same recipe reads **0.63** (the older recipe 0.70). On a blind salmon-weir
   footage set (different species, camera and scale) it read 0.494 with every visit detected, but that test is
   confounded. Treat any new site as needing recalibration and measurement.
-* Energy is **modelled**, not measured: about 3.5-3.8x lower than waking an M2-class GPU host for every frame
-  (host figure scaled to an M3). No silicon power measurement exists.
+* The 0.874 is the recipe's figure (45 fold-models, nested). The one fold-model on this die reads 0.842 on its own 303 held-out events.
+* Energy is **simulated, not measured**: an activity-annotated simulation of the routed netlist gives about 4.6 uJ per frame
+  (3.7 uJ in the core, 0.9 uJ modelled for the sensor pads), which is 3.1-3.4x lower than waking an M2-class GPU host for every frame (host figure
+  scaled to an M3); an earlier model said 3.5-3.8x. About 90% of the power is the clock, so this holds only if the chip is clocked at about
+  four clocks per pixel (311-390 kHz at 15 fps), not at the 22.7 MHz timing limit. No silicon power measurement exists.
 * Timing: the layout is signed off at **22.7 MHz (44 ns)** in every timing corner by Tiny Tapeout's flow. Slew and capacitance
   warnings remain (see `docs/RELEASE_AND_RISKS.md`). Above 22.7 MHz only typical conditions are supported by the analysis.
 * Nothing has been fabricated yet; behaviour on silicon is unverified.
