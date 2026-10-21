@@ -25,20 +25,20 @@
   "VERILOG_DEFINES": ["AQUAFUSE_SKY130_ICG"],
 
   "//": "Repair settings for the OFFICIAL flow (LibreLane 3.0.14), found by running variants on GitHub, 19 Oct 2026 (docs/decisions/0106, DR011). The project's r9 closure used OpenLane 2.0.0 with slew margin 65, wire length 300 and the default fanout limit 10; the same settings in the official flow made repair_design insert 10,544 buffers (r9: 4,581) and the die overflowed at clock-tree legalization (DPL-0036). This combination ran the whole flow and gds, precheck and gl_test all passed (3 h 27 min on a GitHub runner); fanout 25 or 50 alone, with the old slew margin, were cancelled at the 6 h job limit.",
-  "DESIGN_REPAIR_MAX_SLEW_PCT": 35,
-  "GRT_DESIGN_REPAIR_MAX_SLEW_PCT": 35,
+  "DESIGN_REPAIR_MAX_SLEW_PCT": 45,
+  "GRT_DESIGN_REPAIR_MAX_SLEW_PCT": 45,
   "DESIGN_REPAIR_MAX_WIRE_LENGTH": 0,
   "GRT_DESIGN_REPAIR_MAX_WIRE_LENGTH": 0,
-  "DESIGN_REPAIR_MAX_CAP_PCT": 45,
-  "GRT_DESIGN_REPAIR_MAX_CAP_PCT": 35,
+  "DESIGN_REPAIR_MAX_CAP_PCT": 55,
+  "GRT_DESIGN_REPAIR_MAX_CAP_PCT": 45,
   "MAX_TRANSITION_CONSTRAINT": 1.2,
   "MAX_FANOUT_CONSTRAINT": 50,
   "RSZ_CORNERS": [
-    "nom_tt_025C_1v80",
-    "nom_ss_100C_1v60",
-    "nom_ff_n40C_1v95",
     "max_ss_100C_1v60",
-    "min_ss_100C_1v60"
+    "nom_ss_100C_1v60",
+    "min_ss_100C_1v60",
+    "nom_tt_025C_1v80",
+    "nom_ff_n40C_1v95"
   ],
   "RUN_POST_GRT_DESIGN_REPAIR": true,
   "RUN_POST_GRT_RESIZER_TIMING": true,
