@@ -56,7 +56,8 @@
   "RUN_ANTENNA_REPAIR": true,
   "DIODE_ON_PORTS": "none",
   "RUN_HEURISTIC_DIODE_INSERTION": false,
-  "CTS_SINK_CLUSTERING_SIZE": 10,
+  "//DR0109_CTS": "Clock-only follow-up after run 39899418875 reached the six-hour hosted-runner limit during antenna-repair detailed routing. Size 8 previously reduced max-SS clock-load slew/cap findings and is tested without changing constraints, RTL, repair margins or routing controls.",
+  "CTS_SINK_CLUSTERING_SIZE": 8,
   "GPL_CELL_PADDING": 0,
   "DPL_CELL_PADDING": 0,
 
