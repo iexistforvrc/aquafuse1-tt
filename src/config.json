@@ -30,7 +30,7 @@
   "VERILOG_DEFINES": ["AQUAFUSE_SKY130_ICG"],
 
   "//": "Repair settings for the OFFICIAL flow (LibreLane 3.0.14), found by running variants on GitHub, 19 Oct 2026 (docs/decisions/0106, DR011). The project's r9 closure used OpenLane 2.0.0 with slew margin 65, wire length 300 and the default fanout limit 10; the same settings in the official flow made repair_design insert 10,544 buffers (r9: 4,581) and the die overflowed at clock-tree legalization (DPL-0036). This combination ran the whole flow and gds, precheck and gl_test all passed (3 h 27 min on a GitHub runner); fanout 25 or 50 alone, with the old slew margin, were cancelled at the 6 h job limit.",
-  "//": "The prior 44 ns sweep found 45% to be the strongest slew margin that reliably fit the hosted run. This 60 ns experiment raises slew and capacitance margins to 60% because the jumper candidate retained large timing slack (+16.327 ns setup / +1.490 ns hold at max-SS) but failed with 182 slew and 38 cap findings. The six-hour build limit and final routed checks remain binding; a timeout or overflow rejects this trial.",
+  "//": "The prior 44 ns sweep found 45% to be the strongest slew margin that reliably fit the hosted run. The first 60% trial e205ba3 timed out in post-global-route repair after six hours because applying the aggressive repair across five corners caused repeated global routing. This follow-up keeps the same binding electrical targets and headroom but optimizes only max_ss_100C_1v60, the worst slew/setup corner. Final extracted signoff still audits all nine corners; a violation in any corner rejects the result.",
   "DESIGN_REPAIR_MAX_SLEW_PCT": 60,
   "GRT_DESIGN_REPAIR_MAX_SLEW_PCT": 60,
   "DESIGN_REPAIR_MAX_WIRE_LENGTH": 0,
@@ -39,13 +39,7 @@
   "GRT_DESIGN_REPAIR_MAX_CAP_PCT": 60,
   "MAX_TRANSITION_CONSTRAINT": 1.2,
   "MAX_FANOUT_CONSTRAINT": 50,
-  "RSZ_CORNERS": [
-    "nom_tt_025C_1v80",
-    "nom_ss_100C_1v60",
-    "nom_ff_n40C_1v95",
-    "max_ss_100C_1v60",
-    "min_ss_100C_1v60"
-  ],
+  "RSZ_CORNERS": ["max_ss_100C_1v60"],
   "RUN_POST_GRT_DESIGN_REPAIR": true,
   "RUN_POST_GRT_RESIZER_TIMING": true,
 
