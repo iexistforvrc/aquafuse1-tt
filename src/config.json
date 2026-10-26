@@ -13,9 +13,9 @@
   "CTS_CORNERS": ["max_ss_100C_1v60"],
   "CTS_CLK_BUFFERS": ["sky130_fd_sc_hd__clkbuf_16"],
 
-  "//": "The d354e4f single-corner trial moved worst fast-corner hold from -0.150 ns to -0.0186 ns while max-SS hold reached +0.626 ns. Raise the slow-corner target another 0.20 ns to cover the remaining 0.119 ns needed for the binding +0.10 ns all-corner gate plus routed variation. This costs buffers/energy but does not relax the final gate.",
-  "PL_RESIZER_HOLD_SLACK_MARGIN": 0.85,
-  "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.80,
+  "//": "The d354e4f single-corner trial moved worst fast-corner hold from -0.150 ns to -0.0186 ns while max-SS hold reached +0.626 ns. Raise the slow-corner target another 0.30 ns in this parallel trial to cover the remaining 0.119 ns needed for the binding +0.10 ns all-corner gate plus routed variation. This costs buffers/energy but does not relax the final gate.",
+  "PL_RESIZER_HOLD_SLACK_MARGIN": 0.95,
+  "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.90,
 
   "//": "The linter stays ON, as in the template. An earlier draft of this file set RUN_LINTER 0 (every project layout run, r5-r9, ran that way); that would have FAILED the official gds job: with the linter off LibreLane writes no *-verilator-lint directory, and tt-gds-action@ttsky26d's 'Linter output' step then runs `cat runs/wokwi/*-verilator-lint/verilator-lint.log` under bash -e, exits 1, and every later step (tt_submission artifact, precheck, gl_test) is skipped. Reproduced with the action's own script; found 19 Oct 2026, docs/decisions/0106.",
   "//": "With the linter on, LibreLane 3.0.14 runs `verilator --lint-only --Wall --Wno-fatal --Werror-LATCH --Werror-MULTIDRIVEN`. Run locally with those flags (Verilator 5.032) src/ gives 0 errors and 57 warnings (25 WIDTHEXPAND, 11 WIDTHTRUNC, 12 UNUSEDSIGNAL, 4 WIDTHCONCAT, 4 UNUSEDPARAM, 1 UNOPTFLAT, 1 TIMESCALEMOD); warnings are not fatal (ERROR_ON_LINTER_WARNINGS defaults to false) and were never triaged. They are not a verification: RTL == oracle bit for bit and netlist == RTL are.",
@@ -51,10 +51,10 @@
   "RUN_ANTENNA_REPAIR": true,
   "DIODE_ON_PORTS": "none",
   "RUN_HEURISTIC_DIODE_INSERTION": false,
-  "//DR0109_ROUTE": "Runs 40192427848 and 40222165377 timed out after 65% pre-route repair created more than 9,000 timing-repair buffers. Keep the default 10% diode-capable antenna margin and one max-SS repair corner. Restore the proven-completing 60% pre-route repair and apply 65% only after global routing, retaining tighter CTS and hold headroom without relaxing the binding 1.2 ns / 0.2 pF or final 0.10 ns hold limits.",
+  "//DR0109_ROUTE": "Runs 40192427848 and 40222165377 timed out after 65% pre-route repair created more than 9,000 timing-repair buffers. Keep the default 10% diode-capable antenna margin and one max-SS repair corner. Restore the proven-completing 60% pre-route repair and apply 65% only after global routing, retaining the parallel 0.08 pF / 0.65 ns CTS and 0.95 / 0.90 ns hold headroom without relaxing the binding 1.2 ns / 0.2 pF or final 0.10 ns hold limits.",
   "CTS_SINK_CLUSTERING_SIZE": 6,
-  "CTS_MAX_CAP": 0.10,
-  "CTS_MAX_SLEW": 0.75,
+  "CTS_MAX_CAP": 0.08,
+  "CTS_MAX_SLEW": 0.65,
   "GPL_CELL_PADDING": 0,
   "DPL_CELL_PADDING": 0,
 
