@@ -165,8 +165,13 @@ module tt_um_aquafuse_stream12c #(
         {SHAPE_M, SHAPE_N, CLS_OFFSET};
 
     reg [2:0] sck_sync, ld_sync;
+    // DR0110 physical: cfg_sr[37], uio_in[3] were routed as ~0.2 pF long-wire nets
+    // (extracted caps over the Liberty limit). cfg_xfer and sdi_q are pipeline
+    // stages that cut those wires; the commit is delayed one clock to match, and
+    // the host protocol (SDI held 4 clocks after SCK, LOAD after SCK low) has margin.
     reg [CFG_W-1:0] cfg_sr, cfg_live;
     reg cfg_pending, cfg_loaded;
+    reg [CFG_W-1:0] cfg_xfer; reg cfg_pending_d, sdi_q;
     wire sck_rise = sck_sync[1] & ~sck_sync[2];
     wire ld_rise  =  ld_sync[1] & ~ld_sync[2];
     // Declared here rather than with the sensor instance below: the config
@@ -178,15 +183,17 @@ module tt_um_aquafuse_stream12c #(
         if (!rstn) begin
             sck_sync <= 3'b000; ld_sync <= 3'b000;
             cfg_sr <= CFG_DEFAULT; cfg_live <= CFG_DEFAULT;
+            cfg_xfer <= CFG_DEFAULT; cfg_pending_d <= 1'b0; sdi_q <= 1'b0;
             cfg_pending <= 1'b0; cfg_loaded <= 1'b0;
         end else begin
+            sdi_q <= uio_in[3]; cfg_xfer <= cfg_sr; cfg_pending_d <= cfg_pending;
             sck_sync <= {sck_sync[1:0], uio_in[2]};
             ld_sync  <= { ld_sync[1:0], uio_in[4]};
-            if (sck_rise) cfg_sr <= {cfg_sr[CFG_W-2:0], uio_in[3]};
+            if (sck_rise) cfg_sr <= {cfg_sr[CFG_W-2:0], sdi_q};
             if (ld_rise)  cfg_pending <= 1'b1;
-            if (cfg_pending && (frame_start || !sensor_in_frame)) begin
-                cfg_live    <= cfg_sr;
-                cfg_pending <= 1'b0;
+            if (cfg_pending_d && (frame_start || !sensor_in_frame)) begin
+                cfg_live    <= cfg_xfer;
+                cfg_pending <= 1'b0; cfg_pending_d <= 1'b0;
                 cfg_loaded  <= 1'b1;
             end
         end
