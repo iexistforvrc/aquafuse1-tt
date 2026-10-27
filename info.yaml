@@ -7,9 +7,10 @@ project:
   language:     "SystemVerilog"
   clock_hz:     16666666      # DR0109 experimental 60 ns target; NOT signed off until candidate reports pass
 
-  # 8x4 = 32 tiles, 1378.16 x 511.36 um, the die the part is laid out on. 8x4 projects were accepted on
-  # SKY 25a, 26a and 26b; the template's "up to 8x2" comment is stale. The risk is free slots (docs/RELEASE_AND_RISKS.md).
-  tiles: "8x4"
+  # TTGF26c allows at most 4x4. Its 350 x 160 um tiles make this a 1.4 x 0.64 mm
+  # capacity probe. It is not a release candidate until GF180 physical and electrical
+  # signoff is independently closed.
+  tiles: "4x4"
 
   top_module:  "tt_um_aquafuse_stream12c"
 
