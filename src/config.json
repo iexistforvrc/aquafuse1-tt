@@ -14,7 +14,7 @@
   "CTS_CLK_BUFFERS": ["sky130_fd_sc_hd__clkbuf_16"],
 
   "//": "The max-SS-only 60% trial b87691d finished with max-SS hold +0.129 ns but max-FF hold -0.150 ns. Adding max-FF as a repair corner either destroyed slow electrical sizing or exhausted runner memory, depending on corner order. Keep the bounded max-SS repair corner and request another 0.30 ns of hold guard band there: 0.60 ns targets the observed 0.279 ns max-SS-to-max-FF gap plus the binding 0.10 ns final margin and routed erosion. This costs buffers/energy but does not relax the final all-corner hold gate.",
-  "PL_RESIZER_HOLD_SLACK_MARGIN": 0.75,
+  "PL_RESIZER_HOLD_SLACK_MARGIN": 0.80,
   "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.70,
 
   "//": "The linter stays ON, as in the template. An earlier draft of this file set RUN_LINTER 0 (every project layout run, r5-r9, ran that way); that would have FAILED the official gds job: with the linter off LibreLane writes no *-verilator-lint directory, and tt-gds-action@ttsky26d's 'Linter output' step then runs `cat runs/wokwi/*-verilator-lint/verilator-lint.log` under bash -e, exits 1, and every later step (tt_submission artifact, precheck, gl_test) is skipped. Reproduced with the action's own script; found 19 Oct 2026, docs/decisions/0106.",
@@ -52,7 +52,7 @@
   "DIODE_ON_PORTS": "none",
   "RUN_HEURISTIC_DIODE_INSERTION": false,
   "//DR0109_ROUTE": "Run 40125028008 proved the 60% max-SS-only recipe can close antenna and physical checks with 32 max-SS slew / 14 cap findings, but it omitted fast-corner hold. Two-corner trials either regressed electrical sizing or exhausted runner memory. Keep the default 10% diode-capable antenna margin and use 60% pre-route plus 62% post-route max-SS repair; create fast-corner hold headroom through the slow-corner hold target without relaxing the binding 1.2 ns / 0.2 pF or final 0.10 ns hold limits.",
-  "CTS_SINK_CLUSTERING_SIZE": 5,
+  "CTS_SINK_CLUSTERING_SIZE": 4,
   "CTS_MAX_CAP": 0.15,
   "CTS_MAX_SLEW": 0.9,
   "GPL_CELL_PADDING": 0,
