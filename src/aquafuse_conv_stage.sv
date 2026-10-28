@@ -125,6 +125,10 @@ module aquafuse_conv_stage #(
 
     // ONE CLOCK GATE PER WORD (aquafuse_icg), not a write multiplexer per bit:
     // the row store is most of this stage's flops (see aquafuse_bg_store).
+    // Latch storage (GF180 area, see aquafuse_bg_store): fed from a register so the
+    // latch, transparent in the high phase after the edge, holds this cycle's data.
+    logic [WB-1:0] in_q;
+    always_ff @(posedge clk) in_q <= in_data;
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
         for (genvar c = 0; c < IN_W; c++) begin : g_col
             logic gclk;
@@ -134,7 +138,7 @@ module aquafuse_conv_stage #(
                 .gclk(gclk)
             );
             logic [WB-1:0] word;
-            always_ff @(posedge gclk) word <= in_data;
+            aquafuse_lat #(.W(WB)) u_lat (.en(gclk), .d(in_q), .q(word));
             assign rowmem[(s*IN_W + c)*WB +: WB] = word;
         end
     end
