@@ -77,14 +77,11 @@ async def test_counter(dut):
     # bidir_PAD vector into individual bits through a tb wrapper.
     # Even better, use individual pad names for each bit.
 
-    # Start the counter by setting all inputs to 1
-    dut.input_PAD.value = -1
-
-    # Wait for a number of clock cycles
-    await ClockCycles(dut.clk_PAD, 100)
-
-    # Check the end result of the counter
-    assert dut.bidir_PAD.value == 100 - 1
+    # SMOKE ONLY: the template's counter test does not apply to AquaFuse-1. The part's
+    # function is verified by its own oracle and gate tests (tests/rtl, DR 0092), not here.
+    # This checks that the pad ring, the core wrapper and the part elaborate and run.
+    await ClockCycles(dut.clk_PAD, 200)
+    assert dut.bidir_PAD.value.is_resolvable or gl, "pad bus unresolved in RTL"
 
     logger.info("Done!")
 
@@ -116,6 +113,11 @@ def chip_top_runner():
     else:
         sources.append(proj_path / "../src/chip_top.sv")
         sources.append(proj_path / "../src/chip_core.sv")
+        for name in ("aquafuse_icg", "aquafuse_sel", "aquafuse_sensor_if", "aquafuse_stem_accum",
+                     "aquafuse_conv_stage", "aquafuse_rom_stem", "aquafuse_rom_b1", "aquafuse_rom_b2",
+                     "aquafuse_rom_obj", "aquafuse_bg_fifo", "aquafuse_bg_store", "aquafuse_bg_block",
+                     "aquafuse_temporal_head", "tt_um_aquafuse_stream12c"):
+            sources.append(proj_path / f"../src/{name}.sv")
 
     sources += [
         # IO pad models
