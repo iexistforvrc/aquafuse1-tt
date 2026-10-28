@@ -23,19 +23,18 @@ module aquafuse_sel #(
     localparam int AW = (N <= 1) ? 1 : $clog2(N);
     localparam int NP = 1 << AW;
 
-    wire [2*NP*W-1:0] tree;
-    assign tree[W-1:0] = '0;                       // node 0 is unused
-    for (genvar i = 0; i < NP; i++) begin : g_leaf
-        if (i < N) begin : g_w
-            assign tree[(NP+i)*W +: W] = words[i*W +: W];
-        end else begin : g_z
-            assign tree[(NP+i)*W +: W] = '0;
+    // ONE-HOT AND-OR (GF180 area). The select is decoded once and shared by all W
+    // bits; each bit is then an AND-OR over the words, which maps to AOI22 pairs
+    // (about half the area per input of a 2:1 multiplexer tree).
+    logic [N-1:0] hot;
+    for (genvar i = 0; i < N; i++) begin : g_hot
+        assign hot[i] = (sel == AW'(i));
+    end
+    for (genvar b = 0; b < W; b++) begin : g_bit
+        logic [N-1:0] terms;
+        for (genvar i = 0; i < N; i++) begin : g_t
+            assign terms[i] = words[i*W + b] & hot[i];
         end
+        assign y[b] = |terms;
     end
-    for (genvar n = 1; n < NP; n++) begin : g_node
-        localparam int D = $clog2(n + 1) - 1;      // depth = floor(log2 n)
-        assign tree[n*W +: W] = sel[AW-1-D] ? tree[(2*n+1)*W +: W]
-                                            : tree[(2*n)*W +: W];
-    end
-    assign y = tree[W +: W];
 endmodule
