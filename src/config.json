@@ -16,6 +16,8 @@
   "//": "The max-SS-only 60% trial b87691d finished with max-SS hold +0.129 ns but max-FF hold -0.150 ns. Adding max-FF as a repair corner either destroyed slow electrical sizing or exhausted runner memory, depending on corner order. Keep the bounded max-SS repair corner and request another 0.30 ns of hold guard band there: 0.60 ns targets the observed 0.279 ns max-SS-to-max-FF gap plus the binding 0.10 ns final margin and routed erosion. This costs buffers/energy but does not relax the final all-corner hold gate.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.75,
   "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.70,
+  "PL_RESIZER_HOLD_MAX_BUFFER_PCT": 100,
+  "GRT_RESIZER_HOLD_MAX_BUFFER_PCT": 100,
 
   "//": "The linter stays ON, as in the template. An earlier draft of this file set RUN_LINTER 0 (every project layout run, r5-r9, ran that way); that would have FAILED the official gds job: with the linter off LibreLane writes no *-verilator-lint directory, and tt-gds-action@ttsky26d's 'Linter output' step then runs `cat runs/wokwi/*-verilator-lint/verilator-lint.log` under bash -e, exits 1, and every later step (tt_submission artifact, precheck, gl_test) is skipped. Reproduced with the action's own script; found 19 Oct 2026, docs/decisions/0106.",
   "//": "With the linter on, LibreLane 3.0.14 runs `verilator --lint-only --Wall --Wno-fatal --Werror-LATCH --Werror-MULTIDRIVEN`. Run locally with those flags (Verilator 5.032) src/ gives 0 errors and 57 warnings (25 WIDTHEXPAND, 11 WIDTHTRUNC, 12 UNUSEDSIGNAL, 4 WIDTHCONCAT, 4 UNUSEDPARAM, 1 UNOPTFLAT, 1 TIMESCALEMOD); warnings are not fatal (ERROR_ON_LINTER_WARNINGS defaults to false) and were never triaged. They are not a verification: RTL == oracle bit for bit and netlist == RTL are.",
