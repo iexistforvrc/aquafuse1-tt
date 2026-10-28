@@ -104,7 +104,7 @@ module aquafuse_bg_store #(
         // ends the high phase holding exactly what the flop version captured.
         // Each entry is read once per frame and never on the cycle it opens.
         logic [WD-1:0] word;
-        always_latch if (gclk) word = upd_q;
+        aquafuse_lat #(.W(WD)) u_lat (.en(gclk), .d(upd_q), .q(word));
         assign mem[e*WD +: WD] = word;
     end
     always_ff @(posedge clk or negedge rst_n) begin

@@ -18,6 +18,7 @@ project:
   # Keep PROJECT_SOURCES in test/Makefile in step with this list.
   source_files:
     - "aquafuse_icg.sv"
+    - "aquafuse_lat.sv"
     - "aquafuse_sel.sv"
     - "aquafuse_sensor_if.sv"
     - "aquafuse_stem_accum.sv"

@@ -7,7 +7,7 @@ FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
 # every .sv in info.yaml's source_files; the .svh headers are found through -I$(SRC_DIR)
-PROJECT_SOURCES = aquafuse_icg.sv aquafuse_sel.sv aquafuse_sensor_if.sv aquafuse_stem_accum.sv \
+PROJECT_SOURCES = aquafuse_icg.sv aquafuse_lat.sv aquafuse_sel.sv aquafuse_sensor_if.sv aquafuse_stem_accum.sv \
 	aquafuse_conv_stage.sv aquafuse_rom_stem.sv aquafuse_rom_b1.sv aquafuse_rom_b2.sv \
 	aquafuse_rom_obj.sv aquafuse_bg_fifo.sv aquafuse_bg_store.sv aquafuse_bg_block.sv \
 	aquafuse_temporal_head.sv tt_um_aquafuse_stream12c.sv
