@@ -14,7 +14,7 @@ localparam logic [191:0] BIAS_B2 = 192'h000013620000009dffffff2400000c52000002fa
 localparam logic signed [31:0] BIAS_OBJ = 577;
 
 // The EMA of the stem accumulator: stored width and LSB (DR 0093).
-localparam int EMA_W = 12;
+localparam int EMA_W = 10;
 localparam int EMA_Q = 8;
 localparam int BG_BLOCK = 0;   // 0: one entry per cell
 
@@ -34,5 +34,5 @@ localparam logic [4:0] SHAPE_N = 5'd11;
 // The wake is held this many frames after the popcount drops.
 localparam logic [4:0] SHAPE_HOLD = 5'd10;
 
-// alarm when max-cell logit >= -95119: logit + CLS_OFFSET >= 0.
-localparam logic signed [31:0] CLS_OFFSET = 32'sd95119;
+// alarm when max-cell logit >= -95092: logit + CLS_OFFSET >= 0.
+localparam logic signed [31:0] CLS_OFFSET = 32'sd95092;
