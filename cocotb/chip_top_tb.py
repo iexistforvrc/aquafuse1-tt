@@ -116,8 +116,9 @@ def chip_top_runner():
         for name in ("aquafuse_icg", "aquafuse_sel", "aquafuse_sensor_if", "aquafuse_stem_accum",
                      "aquafuse_conv_stage", "aquafuse_rom_stem", "aquafuse_rom_b1", "aquafuse_rom_b2",
                      "aquafuse_rom_obj", "aquafuse_bg_fifo", "aquafuse_bg_store", "aquafuse_bg_block",
-                     "aquafuse_temporal_head", "tt_um_aquafuse_stream12c"):
+                     "tt_um_aquafuse_stream12c"):
             sources.append(proj_path / f"../src/{name}.sv")
+        sources.append(proj_path / "compat/aquafuse_temporal_head.sv")  # Icarus 12 rejects the unsized divisor in the hardened file
 
     sources += [
         # IO pad models
