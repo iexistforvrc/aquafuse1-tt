@@ -74,6 +74,10 @@ module aquafuse_temporal_head #(
 
     // ONE CLOCK GATE PER WORD (aquafuse_icg), not a write multiplexer per bit.
     wire signed [MW-1:0] wr_narrow = narrow(wr_val);
+    // latch storage (GF180 area): fed from a register so the latch, transparent in the high
+    // phase after the edge, holds this cycle's value (see aquafuse_bg_store)
+    logic [MW-1:0] wr_q;
+    always_ff @(posedge clk) wr_q <= wr_narrow;
     for (genvar s = 0; s < K; s++) begin : g_slot
         for (genvar c = 0; c < N; c++) begin : g_cell
             logic gclk;
@@ -83,7 +87,7 @@ module aquafuse_temporal_head #(
                 .gclk(gclk)
             );
             logic [MW-1:0] word;
-            always_ff @(posedge gclk) word <= wr_narrow;
+            aquafuse_lat #(.W(MW)) u_lat (.en(gclk), .d(wr_q), .q(word));
             assign ring[(s*N + c)*MW +: MW] = word;
         end
     end
