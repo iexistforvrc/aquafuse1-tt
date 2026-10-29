@@ -93,7 +93,8 @@ module aquafuse_temporal_head #(
     st_t st;
     logic [$clog2(N)-1:0]    cix;
     logic [$clog2(TAPS)-1:0] tap;
-    logic signed [31:0]      acc, best;
+    // 24 bits: |acc| <= 27 taps * 128 * 512 + |T_B| < 2^23 (GF180 area; was 32)
+    logic signed [23:0]      acc, best;
     logic                    have_best;
 
     // the tap's frame, row and column offsets
@@ -123,7 +124,7 @@ module aquafuse_temporal_head #(
     wire signed [7:0] wv = $signed(T_W[8*(TAPS-1-tap) +: 8]);
     // BOTH operands widened first: inside a cast the product is self-determined,
     // so `32'(wv * mval)` would multiply at 10 bits and overflow before widening
-    wire signed [31:0] prod = 32'($signed(wv)) * 32'($signed(mval));
+    wire signed [23:0] prod = 24'($signed(wv)) * 24'($signed(mval));
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -134,7 +135,7 @@ module aquafuse_temporal_head #(
             done <= 1'b0;
             case (st)
                 IDLE: if (start) begin
-                    cix <= '0; tap <= '0; acc <= T_B; have_best <= 1'b0;
+                    cix <= '0; tap <= '0; acc <= 24'(T_B); have_best <= 1'b0;
                     st <= RUN;
                 end
                 RUN: begin
@@ -143,7 +144,7 @@ module aquafuse_temporal_head #(
                         if (!have_best || (acc + prod) > best)
                             best <= acc + prod;
                         have_best <= 1'b1;
-                        acc <= T_B;
+                        acc <= 24'(T_B);
                         tap <= '0;
                         if (cix == ($clog2(N))'(N - 1)) st <= FIN;
                         else cix <= cix + 1'b1;

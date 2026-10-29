@@ -77,6 +77,16 @@ module aquafuse_stem_accum #(
 `include "aquafuse_round.svh"
 
     logic signed [ACC_W-1:0] acc [OUT_W-1:0][COUT-1:0];
+    // flat view for the one-hot read ports (aquafuse_sel), GF180 area
+    wire [OUT_W*COUT*ACC_W-1:0] acc_flat;
+    for (genvar p = 0; p < OUT_W; p++) begin : g_flat_p
+        for (genvar l = 0; l < COUT; l++) begin : g_flat_l
+            assign acc_flat[(p*COUT + l)*ACC_W +: ACC_W] = acc[p][l];
+        end
+    end
+    wire [COUT*ACC_W-1:0] rd_mac_word, rd_out_word;
+    aquafuse_sel #(.N(OUT_W), .W(COUT*ACC_W)) u_rd_mac (.words(acc_flat), .sel(mac_col), .y(rd_mac_word));
+    aquafuse_sel #(.N(OUT_W), .W(COUT*ACC_W)) u_rd_out (.words(acc_flat), .sel(rd_col),  .y(rd_out_word));
 
     // A SIGNED zero, and it has to be spelled out. `{ACC_W{1'b0}}` and a bare
     // `'0` are UNSIGNED, and a ternary with one unsigned operand makes the
@@ -119,7 +129,7 @@ module aquafuse_stem_accum #(
     logic signed [ACC_W-1:0] acc_rd   [COUT-1:0];
     logic signed [ACC_W-1:0] acc_next [COUT-1:0];
     for (genvar l = 0; l < COUT; l++) begin : g_acc
-        assign acc_rd[l] = acc[mac_col][l];
+        assign acc_rd[l] = $signed(rd_mac_word[l*ACC_W +: ACC_W]);
         assign acc_next[l] = (clear_this ? ACC_ZERO : acc_rd[l])
             + ACC_W'($signed(mac_act) * $signed(mac_wgt[8*(COUT-1-l) +: 8]));
     end
@@ -150,7 +160,7 @@ module aquafuse_stem_accum #(
     logic signed [31:0]      acc_x   [COUT-1:0];
     logic signed [31:0]      d_x     [COUT-1:0];
     for (genvar l = 0; l < COUT; l++) begin : g_sel
-        assign acc_sel[l] = acc[rd_col][l];
+        assign acc_sel[l] = $signed(rd_out_word[l*ACC_W +: ACC_W]);
         assign acc_x[l]   = {{(32-ACC_W){acc_sel[l][ACC_W-1]}}, acc_sel[l]};
         assign rd_acc[32*(COUT-1-l) +: 32] = acc_x[l];
         // 32 bits throughout: |acc| < 2**20 and the background and bias are of
