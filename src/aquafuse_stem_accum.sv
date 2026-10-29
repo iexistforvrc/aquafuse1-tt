@@ -76,14 +76,8 @@ module aquafuse_stem_accum #(
 
 `include "aquafuse_round.svh"
 
-    logic signed [ACC_W-1:0] acc [OUT_W-1:0][COUT-1:0];
     // flat view for the one-hot read ports (aquafuse_sel), GF180 area
     wire [OUT_W*COUT*ACC_W-1:0] acc_flat;
-    for (genvar p = 0; p < OUT_W; p++) begin : g_flat_p
-        for (genvar l = 0; l < COUT; l++) begin : g_flat_l
-            assign acc_flat[(p*COUT + l)*ACC_W +: ACC_W] = acc[p][l];
-        end
-    end
     wire [COUT*ACC_W-1:0] rd_mac_word, rd_out_word;
     aquafuse_sel #(.N(OUT_W), .W(COUT*ACC_W)) u_rd_mac (.words(acc_flat), .sel(mac_col), .y(rd_mac_word));
     aquafuse_sel #(.N(OUT_W), .W(COUT*ACC_W)) u_rd_out (.words(acc_flat), .sel(rd_col),  .y(rd_out_word));
@@ -134,20 +128,23 @@ module aquafuse_stem_accum #(
             + ACC_W'($signed(mac_act) * $signed(mac_wgt[8*(COUT-1-l) +: 8]));
     end
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            for (int p = 0; p < OUT_W; p++)
-                for (int l = 0; l < COUT; l++) acc[p][l] <= ACC_ZERO;
-        end else begin
-            for (int p = 0; p < OUT_W; p++)
-                for (int l = 0; l < COUT; l++) begin
-                    if (bank_clear)
-                        acc[p][l] <= ACC_ZERO;
-                    else if (mac_en && (mac_col == p[$clog2(OUT_W)-1:0]))
-                        acc[p][l] <= acc_next[l];
-                    else if (col_clear && (clear_col == p[$clog2(OUT_W)-1:0]))
-                        acc[p][l] <= ACC_ZERO;
-                end
+    // ONE CLOCK GATE PER COLUMN (GF180 area; was a 3-way enable on every bit).
+    // The column is clocked when anything writes it, and then takes acc_next if the
+    // MAC hits it (and no bank_clear), else zero -- the same priority as before:
+    // bank_clear, then MAC, then column clear.
+    for (genvar p = 0; p < OUT_W; p++) begin : g_col
+        wire sel_mac = mac_en && (mac_col == ($clog2(OUT_W))'(p));
+        wire en_p    = bank_clear || sel_mac || (col_clear && (clear_col == ($clog2(OUT_W))'(p)));
+        wire gclk;
+        aquafuse_icg u_cg (.clk(clk), .en(en_p), .gclk(gclk));
+        for (genvar l = 0; l < COUT; l++) begin : g_lane
+            logic signed [ACC_W-1:0] r;
+            always_ff @(posedge gclk or negedge rst_n) begin
+                if (!rst_n)                     r <= ACC_ZERO;
+                else if (bank_clear || !sel_mac) r <= ACC_ZERO;
+                else                            r <= acc_next[l];
+            end
+            assign acc_flat[(p*COUT + l)*ACC_W +: ACC_W] = r;
         end
     end
 
