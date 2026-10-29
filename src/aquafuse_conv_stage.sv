@@ -297,34 +297,26 @@ module aquafuse_conv_stage #(
                     end
                 end
                 MAC: begin
-                    // ONE MULTIPLIER, OUT_CH CYCLES PER TAP (GF180 area). Lane `lane_q`
-                    // takes this tap; each lane still sums its taps in the same order,
-                    // so the result is bit-identical. The clock is stopped between
-                    // frames and a frame has far more cycles than this needs.
+                    // PARALLEL LANES (energy variant): every lane takes the tap in one
+                    // cycle, as the shipped part does, so a frame needs no extra clocks.
                     for (int l = 0; l < OUT_CH; l++)
-                        if (lane_q == LW'(l)) acc[l] <= acc[l] + mac_prod;
-                    if (lane_q == LW'(OUT_CH-1)) begin
-                        lane_q <= '0;
-                        if (tap_q == TAPS-1) st <= EMIT;
-                        else                 tap_q <= tap_q + 1'b1;
-                    end else lane_q <= lane_q + 1'b1;
+                        acc[l] <= acc[l] + $signed(act) * $signed(w_data[8*(OUT_CH-1-l) +: 8]);
+                    if (tap_q == TAPS-1) st <= EMIT;
+                    else                 tap_q <= tap_q + 1'b1;
                 end
                 EMIT: begin
-                    // One requantiser, one lane per cycle; out_valid rises with the
-                    // last lane so the consumer sees the whole word at once.
+                    out_valid <= 1'b1;
+                    out_row   <= orow_q;
+                    out_col   <= ocol_q;
                     for (int l = 0; l < OUT_CH; l++)
-                        if (lane_q == LW'(l))
-                            out_data[8*(OUT_CH-1-l) +: 8] <= emit_byte;
-                    if (lane_q == LW'(OUT_CH-1)) begin
-                        lane_q    <= '0;
-                        out_valid <= 1'b1;
-                        out_row   <= orow_q;
-                        out_col   <= ocol_q;
-                        for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
-                        tap_q <= '0;
-                        if (ocol_q == OUT_W-1) st <= IDLE;
-                        else begin ocol_q <= ocol_q + 1'b1; st <= MAC; end
-                    end else lane_q <= lane_q + 1'b1;
+                        out_data[8*(OUT_CH-1-l) +: 8] <=
+                            round_sat_relu({{(24-ACC_W){acc[l][ACC_W-1]}}, acc[l]},
+                                           cfg_shift[5*(OUT_CH-1-l) +: 5],
+                                           cfg_relu);
+                    for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
+                    tap_q <= '0;
+                    if (ocol_q == OUT_W-1) st <= IDLE;
+                    else begin ocol_q <= ocol_q + 1'b1; st <= MAC; end
                 end
                 default: st <= IDLE;
             endcase
