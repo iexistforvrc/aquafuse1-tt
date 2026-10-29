@@ -113,7 +113,7 @@ def chip_top_runner():
     else:
         sources.append(proj_path / "../src/chip_top.sv")
         sources.append(proj_path / "../src/chip_core.sv")
-        for name in ("aquafuse_icg", "aquafuse_sel", "aquafuse_sensor_if", "aquafuse_stem_accum",
+        for name in ("aquafuse_icg", "aquafuse_lat", "aquafuse_sel", "aquafuse_sensor_if", "aquafuse_stem_accum",
                      "aquafuse_conv_stage", "aquafuse_rom_stem", "aquafuse_rom_b1", "aquafuse_rom_b2",
                      "aquafuse_rom_obj", "aquafuse_bg_fifo", "aquafuse_bg_store", "aquafuse_bg_block",
                      "tt_um_aquafuse_stream12c"):

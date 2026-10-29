@@ -114,7 +114,9 @@ module aquafuse_conv_stage #(
     // FLAT, slot-major: word (slot, col) is rowmem[(slot*IN_W + col)*WB +: WB],
     // one driver per word from the gated block below (see aquafuse_bg_store
     // for why flat: this yosys rejects multi-dimensional packed nets).
-    localparam int WB = 8 * IN_CH;
+    // 7 bits stored per activation (GF180 area): both stages are fed post-ReLU bytes, 0..127,
+    // so bit 7 is always 0 and is neither stored nor read.
+    localparam int WB = 7 * IN_CH;
     wire  [ROWS*IN_W*WB-1:0] rowmem;
     logic [SLW-1:0] wr_slot;
     // WIDEN BEFORE THE MODULUS. ROWS can equal IN_H, and slicing it to
@@ -125,6 +127,14 @@ module aquafuse_conv_stage #(
 
     // ONE CLOCK GATE PER WORD (aquafuse_icg), not a write multiplexer per bit:
     // the row store is most of this stage's flops (see aquafuse_bg_store).
+    // Latch storage (GF180 area, see aquafuse_bg_store): fed from a register so the
+    // latch, transparent in the high phase after the edge, holds this cycle's data.
+    logic [WB-1:0] in_q;
+    wire [WB-1:0] in7;
+    for (genvar ch = 0; ch < IN_CH; ch++) begin : g_pack
+        assign in7[7*ch +: 7] = in_data[8*ch +: 7];
+    end
+    always_ff @(posedge clk) in_q <= in7;
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
         for (genvar c = 0; c < IN_W; c++) begin : g_col
             logic gclk;
@@ -134,7 +144,7 @@ module aquafuse_conv_stage #(
                 .gclk(gclk)
             );
             logic [WB-1:0] word;
-            always_ff @(posedge gclk) word <= in_data;
+            aquafuse_lat #(.W(WB)) u_lat (.en(gclk), .d(in_q), .q(word));
             assign rowmem[(s*IN_W + c)*WB +: WB] = word;
         end
     end
@@ -236,12 +246,37 @@ module aquafuse_conv_stage #(
     assign rd_idx = RW'(rd_slot * IN_W + ic_idx);
     logic [WB-1:0] win_raw;
     aquafuse_sel #(.N(ROWS*IN_W), .W(WB)) u_rd (.words(rowmem), .sel(rd_idx), .y(win_raw));
-    wire [8*IN_CH-1:0] win_word = in_range ? win_raw : '0;
+    wire [8*IN_CH-1:0] win_word;
+    for (genvar ch = 0; ch < IN_CH; ch++) begin : g_unpack
+        assign win_word[8*ch +: 8] = {1'b0, in_range ? win_raw[7*ch +: 7] : 7'd0};
+    end
     assign act = $signed(win_word[8*(IN_CH-1-w_ci) +: 8]);
+
+    // lane sequencing: shared multiplier in MAC, shared requantiser in EMIT
+    localparam int LW = (OUT_CH <= 1) ? 1 : $clog2(OUT_CH);
+    logic [LW-1:0] lane_q;
+    logic signed [7:0] w_lane;
+    logic signed [ACC_W-1:0] acc_lane;
+    logic signed [15:0] prod16;
+    logic signed [ACC_W-1:0] mac_prod;
+    logic [7:0] emit_byte;
+    always_comb begin
+        w_lane   = '0;
+        acc_lane = '0;
+        for (int l = 0; l < OUT_CH; l++)
+            if (lane_q == LW'(l)) begin
+                w_lane   = $signed(w_data[8*(OUT_CH-1-l) +: 8]);
+                acc_lane = acc[l];
+            end
+        prod16    = $signed(act) * w_lane;          // 16-bit context: the full 8x8 product
+        mac_prod  = ACC_W'(prod16);                 // sign-extends
+        emit_byte = round_sat_relu({{(24-ACC_W){acc_lane[ACC_W-1]}}, acc_lane},
+                                   cfg_shift[5*(OUT_CH-1-lane_q) +: 5], cfg_relu);
+    end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            st <= IDLE; orow_q <= '0; ocol_q <= '0; tap_q <= '0;
+            st <= IDLE; orow_q <= '0; ocol_q <= '0; tap_q <= '0; lane_q <= '0;
             orow_ptr <= '0;
             out_valid <= 1'b0; busy <= 1'b0;
             for (int l = 0; l < OUT_CH; l++) acc[l] <= '0;
@@ -262,25 +297,34 @@ module aquafuse_conv_stage #(
                     end
                 end
                 MAC: begin
+                    // ONE MULTIPLIER, OUT_CH CYCLES PER TAP (GF180 area). Lane `lane_q`
+                    // takes this tap; each lane still sums its taps in the same order,
+                    // so the result is bit-identical. The clock is stopped between
+                    // frames and a frame has far more cycles than this needs.
                     for (int l = 0; l < OUT_CH; l++)
-                        acc[l] <= acc[l] + $signed(act)
-                                  * $signed(w_data[8*(OUT_CH-1-l) +: 8]);
-                    if (tap_q == TAPS-1) st <= EMIT;
-                    else                 tap_q <= tap_q + 1'b1;
+                        if (lane_q == LW'(l)) acc[l] <= acc[l] + mac_prod;
+                    if (lane_q == LW'(OUT_CH-1)) begin
+                        lane_q <= '0;
+                        if (tap_q == TAPS-1) st <= EMIT;
+                        else                 tap_q <= tap_q + 1'b1;
+                    end else lane_q <= lane_q + 1'b1;
                 end
                 EMIT: begin
-                    out_valid <= 1'b1;
-                    out_row   <= orow_q;
-                    out_col   <= ocol_q;
+                    // One requantiser, one lane per cycle; out_valid rises with the
+                    // last lane so the consumer sees the whole word at once.
                     for (int l = 0; l < OUT_CH; l++)
-                        out_data[8*(OUT_CH-1-l) +: 8] <=
-                            round_sat_relu({{(32-ACC_W){acc[l][ACC_W-1]}}, acc[l]},
-                                           cfg_shift[5*(OUT_CH-1-l) +: 5],
-                                           cfg_relu);
-                    for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
-                    tap_q <= '0;
-                    if (ocol_q == OUT_W-1) st <= IDLE;
-                    else begin ocol_q <= ocol_q + 1'b1; st <= MAC; end
+                        if (lane_q == LW'(l))
+                            out_data[8*(OUT_CH-1-l) +: 8] <= emit_byte;
+                    if (lane_q == LW'(OUT_CH-1)) begin
+                        lane_q    <= '0;
+                        out_valid <= 1'b1;
+                        out_row   <= orow_q;
+                        out_col   <= ocol_q;
+                        for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
+                        tap_q <= '0;
+                        if (ocol_q == OUT_W-1) st <= IDLE;
+                        else begin ocol_q <= ocol_q + 1'b1; st <= MAC; end
+                    end else lane_q <= lane_q + 1'b1;
                 end
                 default: st <= IDLE;
             endcase

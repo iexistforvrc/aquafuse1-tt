@@ -12,23 +12,26 @@
 // give a design that is self-consistent and wrong.
     // acc -> int8, rounding ties away from zero on the magnitude.
     function automatic logic signed [7:0] round_sat_relu
-        (input logic signed [31:0] acc,
+        // 24-BIT DATAPATH (GF180 area; was 32). Every caller's value is below 2^21 in
+        // magnitude (scripts/vps/acc_bounds.py: accumulators <= 20 bits; stem d_x < 2^20)
+        // and every shift is a constant <= 10, so nothing is lost; the oracle test is bit-exact.
+        (input logic signed [23:0] acc,
          input logic [4:0]         shift,
          input logic               relu);
-        logic [31:0] mag;
-        logic [31:0] rnd;
-        logic signed [31:0] val;
+        logic [23:0] mag;
+        logic [23:0] rnd;
+        logic signed [23:0] val;
         begin
-            mag = acc[31] ? (~acc + 32'd1) : acc;
+            mag = acc[23] ? (~acc + 24'd1) : acc;
             if (shift == 5'd0) begin
                 rnd = mag;
             end else begin
-                rnd = (mag + (32'd1 << (shift - 5'd1))) >> shift;
+                rnd = (mag + (24'd1 << (shift - 5'd1))) >> shift;
             end
-            val = acc[31] ? -$signed(rnd) : $signed(rnd);
-            if (val >  32'sd127) val =  32'sd127;
-            if (val < -32'sd128) val = -32'sd128;
-            if (relu && val < 0)  val = 32'sd0;
+            val = acc[23] ? -$signed(rnd) : $signed(rnd);
+            if (val >  24'sd127) val =  24'sd127;
+            if (val < -24'sd128) val = -24'sd128;
+            if (relu && val < 0)  val = 24'sd0;
             round_sat_relu = val[7:0];
         end
     endfunction

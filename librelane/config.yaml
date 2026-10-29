@@ -33,6 +33,7 @@ VERILOG_FILES:
 - dir::../src/chip_top.sv
 - dir::../src/chip_core.sv
 - dir::../src/aquafuse_icg.sv
+- dir::../src/aquafuse_lat.sv
 - dir::../src/aquafuse_sel.sv
 - dir::../src/aquafuse_sensor_if.sv
 - dir::../src/aquafuse_stem_accum.sv

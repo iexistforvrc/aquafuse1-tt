@@ -88,6 +88,8 @@ module aquafuse_bg_store #(
     // multiplexer; this module was 153,441 um2, the largest in the part. Each
     // entry is written once per frame, so its flops need a clock on that one
     // cycle and on no other.
+    logic [WD-1:0] upd_q;
+    always_ff @(posedge clk) upd_q <= upd_word;
     for (genvar e = 0; e < ENTRIES; e++) begin : g_ent
         logic gclk;
         aquafuse_icg u_cg (
@@ -95,8 +97,14 @@ module aquafuse_bg_store #(
             .en  (rd_en && addr == ($clog2(ENTRIES))'(e)),
             .gclk(gclk)
         );
+        // GF180 AREA: a level-sensitive latch is ~30% smaller than a flop. It is
+        // transparent while gclk is high, so it must be fed from a register, not
+        // from upd_word: upd_word reads this very latch, which would be a loop.
+        // upd_q takes upd_word at the edge that opens the latch, so the latch
+        // ends the high phase holding exactly what the flop version captured.
+        // Each entry is read once per frame and never on the cycle it opens.
         logic [WD-1:0] word;
-        always_ff @(posedge gclk) word <= upd_word;
+        aquafuse_lat #(.W(WD)) u_lat (.en(gclk), .d(upd_q), .q(word));
         assign mem[e*WD +: WD] = word;
     end
     always_ff @(posedge clk or negedge rst_n) begin
