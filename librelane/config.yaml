@@ -196,3 +196,6 @@ KLAYOUT_ANTENNA_OPTIONS:
   decks: "antenna"
   variant: ref::$PDK
   workers: max
+
+# Experiment: one clock-gate CLK pin is left unconnected after CTS
+CTS_SINK_CLUSTERING_ENABLE: false
