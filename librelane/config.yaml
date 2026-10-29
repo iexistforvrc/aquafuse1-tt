@@ -192,6 +192,9 @@ KLAYOUT_DENSITY_OPTIONS:
   variant: ref::$PDK
   workers: max
 
+# Experiment: after CTS one random clock gate lost its CLK connection
+CTS_SINK_CLUSTERING_SIZE: 12
+
 KLAYOUT_ANTENNA_OPTIONS:
   decks: "antenna"
   variant: ref::$PDK
