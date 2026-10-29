@@ -16,6 +16,8 @@
   "//": "Users have reported that values up to 80 worked well for them.",
   "PL_TARGET_DENSITY_PCT": 72,
   "MAX_FANOUT_CONSTRAINT": 50,
+  "CTS_SINK_CLUSTERING_SIZE": 30,
+  "CTS_SINK_CLUSTERING_MAX_DIAMETER": 300,
   "PL_MAX_DISPLACEMENT_X": 700,
   "PL_MAX_DISPLACEMENT_Y": 700,
   "DESIGN_REPAIR_MAX_SLEW_PCT": 0,
