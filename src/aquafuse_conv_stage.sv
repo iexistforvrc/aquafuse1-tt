@@ -270,7 +270,7 @@ module aquafuse_conv_stage #(
             end
         prod16    = $signed(act) * w_lane;          // 16-bit context: the full 8x8 product
         mac_prod  = ACC_W'(prod16);                 // sign-extends
-        emit_byte = round_sat_relu({{(32-ACC_W){acc_lane[ACC_W-1]}}, acc_lane},
+        emit_byte = round_sat_relu({{(24-ACC_W){acc_lane[ACC_W-1]}}, acc_lane},
                                    cfg_shift[5*(OUT_CH-1-lane_q) +: 5], cfg_relu);
     end
 

@@ -157,15 +157,15 @@ module aquafuse_stem_accum #(
     // block whose arithmetic must match the golden model exactly.
     logic signed [ACC_W-1:0] acc_sel [COUT-1:0];
     logic signed [31:0]      acc_x   [COUT-1:0];
-    logic signed [31:0]      d_x     [COUT-1:0];
+    logic signed [23:0]      d_x     [COUT-1:0];   // 24 bits (GF180 area): |d_x| < 2**20
     for (genvar l = 0; l < COUT; l++) begin : g_sel
         assign acc_sel[l] = $signed(rd_out_word[l*ACC_W +: ACC_W]);
         assign acc_x[l]   = {{(32-ACC_W){acc_sel[l][ACC_W-1]}}, acc_sel[l]};
         assign rd_acc[32*(COUT-1-l) +: 32] = acc_x[l];
         // 32 bits throughout: |acc| < 2**20 and the background and bias are of
         // the same order, so the sum cannot reach the sign bit.
-        assign d_x[l] = acc_x[l] - $signed(rd_sub[32*(COUT-1-l) +: 32])
-                                 + $signed(rd_bias[32*(COUT-1-l) +: 32]);
+        assign d_x[l] = 24'(acc_x[l]) - 24'($signed(rd_sub[32*(COUT-1-l) +: 32]))
+                                 + 24'($signed(rd_bias[32*(COUT-1-l) +: 32]));
         assign rd_byte[8*(COUT-1-l) +: 8] =
             round_sat_relu(d_x[l], rd_shift[5*(COUT-1-l) +: 5], rd_relu);
     end
