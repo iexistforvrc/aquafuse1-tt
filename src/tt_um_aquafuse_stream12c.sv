@@ -177,19 +177,32 @@ module tt_um_aquafuse_stream12c #(
     always @(posedge clk) begin
         if (!rstn) begin
             sck_sync <= 3'b000; ld_sync <= 3'b000;
-            cfg_sr <= CFG_DEFAULT; cfg_live <= CFG_DEFAULT;
             cfg_pending <= 1'b0; cfg_loaded <= 1'b0;
         end else begin
             sck_sync <= {sck_sync[1:0], uio_in[2]};
             ld_sync  <= { ld_sync[1:0], uio_in[4]};
-            if (sck_rise) cfg_sr <= {cfg_sr[CFG_W-2:0], uio_in[3]};
             if (ld_rise)  cfg_pending <= 1'b1;
             if (cfg_pending && (frame_start || !sensor_in_frame)) begin
-                cfg_live    <= cfg_sr;
                 cfg_pending <= 1'b0;
                 cfg_loaded  <= 1'b1;
             end
         end
+    end
+
+    // ENERGY: the 84 config flops (shift register and live copy) were clocked every cycle but
+    // change only on a config clock edge and on a load. Each gets a clock gate; the enable also
+    // covers reset because the reset here is synchronous and needs its clock edge.
+    wire cfg_sr_clk, cfg_live_clk;
+    aquafuse_icg u_cg_cfg_sr   (.clk(clk), .en(!rstn | sck_rise), .gclk(cfg_sr_clk));
+    aquafuse_icg u_cg_cfg_live (.clk(clk), .en(!rstn | (cfg_pending && (frame_start || !sensor_in_frame))),
+                                .gclk(cfg_live_clk));
+    always @(posedge cfg_sr_clk) begin
+        if (!rstn) cfg_sr <= CFG_DEFAULT;
+        else       cfg_sr <= {cfg_sr[CFG_W-2:0], uio_in[3]};
+    end
+    always @(posedge cfg_live_clk) begin
+        if (!rstn) cfg_live <= CFG_DEFAULT;
+        else       cfg_live <= cfg_sr;
     end
 
     wire signed [31:0] cfg_cls_offset = cfg_live[31:0];
@@ -664,6 +677,20 @@ module tt_um_aquafuse_stream12c #(
     wire decide = USE_T ? t_done
                         : (frame_ready && !frame_start && !s2_valid && !frame_end);
     wire signed [31:0] dec_logit = USE_T ? (t_logit + cls_t) : obj_logit;
+
+    // ENERGY: the two 32-bit class-offset registers were clocked every cycle but change once per
+    // frame. cls_offset_q samples the live offset at frame_start (and at reset, where the live
+    // value IS the generated constant); cls_t latches it when the frame is complete, with the
+    // same priority the result chain has always had (frame_start, s2_valid, frame_end first).
+    wire clsq_clk, clst_clk;
+    aquafuse_icg u_cg_clsq (.clk(clk), .en(!rstn | frame_start), .gclk(clsq_clk));
+    aquafuse_icg u_cg_clst (.clk(clk), .en(!rstn | (frame_ready && !frame_start && !s2_valid && !frame_end)),
+                            .gclk(clst_clk));
+    always @(posedge clsq_clk) cls_offset_q <= cfg_cls_offset;
+    always @(posedge clst_clk) begin
+        if (!rstn) cls_t <= '0;
+        else       cls_t <= cls_offset_q;
+    end
     wire               dec_seen  = USE_T ? t_seen : obj_seen;
     reg  signed [31:0] score;            // the frame's max-cell logit, pre-offset
 
@@ -687,11 +714,10 @@ module tt_um_aquafuse_stream12c #(
             alarm <= 1'b0; result_valid <= 1'b0;
             alarm_hist <= '0;
             hold_cnt <= '0; wake <= 1'b0;
-            t_seen <= 1'b0; cls_t <= '0; score <= '0;
+            t_seen <= 1'b0; score <= '0;
             // Resets to the live value, which at reset IS the generated
             // constant, so an unconfigured chip behaves exactly as the baked
             // version did -- the same promise the config block makes.
-            cls_offset_q <= cfg_cls_offset;
         end else begin
             result_valid <= 1'b0;
             if (frame_start) begin
@@ -711,7 +737,6 @@ module tt_um_aquafuse_stream12c #(
                 // boundary so a slower pipeline cannot move it unnoticed.
                 obj_max <= '0; obj_seen <= 1'b0;
                 obj_n <= '0; fe_pending <= 1'b0;
-                cls_offset_q <= cfg_cls_offset;   // sample once, per frame
             end else if (s2_valid) begin
                 // Running MAX over the 28 positions. obj_seen makes the first
                 // position seed the maximum rather than compete with a reset
@@ -736,7 +761,6 @@ module tt_um_aquafuse_stream12c #(
                 // cycles later -- possibly after the next frame_start has
                 // cleared obj_seen and resampled the offset
                 t_seen <= obj_seen;
-                cls_t  <= cls_offset_q;
             end
             // THE DECISION, outside the chain so the temporal head's done pulse
             // cannot be swallowed by a frame_start in the same cycle. Without

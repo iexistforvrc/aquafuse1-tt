@@ -77,7 +77,8 @@ module aquafuse_temporal_head #(
     // latch storage (GF180 area): fed from a register so the latch, transparent in the high
     // phase after the edge, holds this cycle's value (see aquafuse_bg_store)
     logic [MW-1:0] wr_q;
-    always_ff @(posedge clk) wr_q <= wr_narrow;
+    wire hclk;   // gated control clock, see u_hctl below
+    always_ff @(posedge hclk) wr_q <= wr_narrow;
     for (genvar s = 0; s < K; s++) begin : g_slot
         for (genvar c = 0; c < N; c++) begin : g_cell
             logic gclk;
@@ -95,6 +96,12 @@ module aquafuse_temporal_head #(
     // ---- the sequential convolution ------------------------------------------
     typedef enum logic [1:0] {IDLE, RUN, FIN} st_t;
     st_t st;
+
+    // ENERGY: the head works for a few thousand cycles after each frame and is idle the rest
+    // of the time, yet its accumulator, counters and staging register were clocked every cycle.
+    // Clock them for a cell write, a start, any state but IDLE, and the cycle `done` clears.
+    wire hctl_en = wr_en | start | (st != IDLE) | done;
+    aquafuse_icg u_hctl (.clk(clk), .en(hctl_en), .gclk(hclk));
     logic [$clog2(N)-1:0]    cix;
     logic [$clog2(TAPS)-1:0] tap;
     // 24 bits: |acc| <= 27 taps * 128 * 512 + |T_B| < 2^23 (GF180 area; was 32)
@@ -130,7 +137,7 @@ module aquafuse_temporal_head #(
     // so `32'(wv * mval)` would multiply at 10 bits and overflow before widening
     wire signed [23:0] prod = 24'($signed(wv)) * 24'($signed(mval));
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge hclk or negedge rst_n) begin
         if (!rst_n) begin
             st <= IDLE; done <= 1'b0; seen <= 2'd0; wslot <= 2'd0;
             cix <= '0; tap <= '0; acc <= '0; best <= '0; have_best <= 1'b0;

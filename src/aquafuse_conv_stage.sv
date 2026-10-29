@@ -134,7 +134,8 @@ module aquafuse_conv_stage #(
     for (genvar ch = 0; ch < IN_CH; ch++) begin : g_pack
         assign in7[7*ch +: 7] = in_data[8*ch +: 7];
     end
-    always_ff @(posedge clk) in_q <= in7;
+    wire cclk;   // gated control clock, see u_ctl below
+    always_ff @(posedge cclk) in_q <= in7;
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
         for (genvar c = 0; c < IN_W; c++) begin : g_col
             logic gclk;
@@ -182,7 +183,7 @@ module aquafuse_conv_stage #(
                     (rows_eff > need_row);
     end
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge cclk or negedge rst_n) begin
         if (!rst_n) begin
             rows_landed <= '0;
         end else if (frame_restart) begin
@@ -196,6 +197,13 @@ module aquafuse_conv_stage #(
     // ---- sequencer over one output row ------------------------------------
     typedef enum logic [1:0] {IDLE, MAC, EMIT} state_t;
     state_t st;
+
+    // ENERGY: the stage's accumulators, counters and output registers were clocked every
+    // cycle although the stage is idle for most of a frame (it works only when a pair of
+    // input rows has landed). Clock them only when something can change: an input beat,
+    // a state other than IDLE, an output pulse to clear, `busy` to drop, or a start.
+    wire ctl_en = in_valid | (st != IDLE) | ready_now | out_valid | busy;
+    aquafuse_icg u_ctl (.clk(clk), .en(ctl_en), .gclk(cclk));
 
     logic [$clog2(IN_H)-1:0] orow_q;
     logic [$clog2(IN_W)-1:0] ocol_q;
@@ -274,7 +282,7 @@ module aquafuse_conv_stage #(
                                    cfg_shift[5*(OUT_CH-1-lane_q) +: 5], cfg_relu);
     end
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge cclk or negedge rst_n) begin
         if (!rst_n) begin
             st <= IDLE; orow_q <= '0; ocol_q <= '0; tap_q <= '0; lane_q <= '0;
             orow_ptr <= '0;
