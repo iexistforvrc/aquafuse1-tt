@@ -29,7 +29,7 @@ PCLK_DIV = 2          # 2 core clocks low + 2 high per pixel = 4 clocks per pixe
 # netlist traces), so each frame is followed by this many sampled idle clocks: the result of frame f is
 # read before frame f+1 starts. (The RTL testbench's 269-clock minimum gap lets results slide into the next
 # frame; both are legal for the chip, this one makes the per-frame check simple.)
-T_SETTLE = 1500
+T_SETTLE = 9000   # the conv stages share one multiplier/requantiser: result arrives ~5,500 clocks after the last pixel
 N_FRAMES = int(os.environ.get("AQUAFUSE_FRAMES", "32"))
 CFG_W = 42
 

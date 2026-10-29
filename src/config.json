@@ -15,7 +15,7 @@
   "//": "PL_TARGET_DENSITY_PCT - You can increase this if Global Placement fails with error GPL-0302.",
   "//": "Users have reported that values up to 80 worked well for them.",
   "PL_TARGET_DENSITY_PCT": 72,
-  "MAX_FANOUT_CONSTRAINT": 50,
+  "MAX_FANOUT_CONSTRAINT": 100,
   "CTS_SINK_CLUSTERING_SIZE": 60,
   "CTS_MAX_CAP": 2.0,
   "CTS_MAX_SLEW": 3.0,
