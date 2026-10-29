@@ -114,7 +114,9 @@ module aquafuse_conv_stage #(
     // FLAT, slot-major: word (slot, col) is rowmem[(slot*IN_W + col)*WB +: WB],
     // one driver per word from the gated block below (see aquafuse_bg_store
     // for why flat: this yosys rejects multi-dimensional packed nets).
-    localparam int WB = 8 * IN_CH;
+    // 7 bits stored per activation (GF180 area): both stages are fed post-ReLU bytes, 0..127,
+    // so bit 7 is always 0 and is neither stored nor read.
+    localparam int WB = 7 * IN_CH;
     wire  [ROWS*IN_W*WB-1:0] rowmem;
     logic [SLW-1:0] wr_slot;
     // WIDEN BEFORE THE MODULUS. ROWS can equal IN_H, and slicing it to
@@ -128,7 +130,11 @@ module aquafuse_conv_stage #(
     // Latch storage (GF180 area, see aquafuse_bg_store): fed from a register so the
     // latch, transparent in the high phase after the edge, holds this cycle's data.
     logic [WB-1:0] in_q;
-    always_ff @(posedge clk) in_q <= in_data;
+    wire [WB-1:0] in7;
+    for (genvar ch = 0; ch < IN_CH; ch++) begin : g_pack
+        assign in7[7*ch +: 7] = in_data[8*ch +: 7];
+    end
+    always_ff @(posedge clk) in_q <= in7;
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
         for (genvar c = 0; c < IN_W; c++) begin : g_col
             logic gclk;
@@ -240,7 +246,10 @@ module aquafuse_conv_stage #(
     assign rd_idx = RW'(rd_slot * IN_W + ic_idx);
     logic [WB-1:0] win_raw;
     aquafuse_sel #(.N(ROWS*IN_W), .W(WB)) u_rd (.words(rowmem), .sel(rd_idx), .y(win_raw));
-    wire [8*IN_CH-1:0] win_word = in_range ? win_raw : '0;
+    wire [8*IN_CH-1:0] win_word;
+    for (genvar ch = 0; ch < IN_CH; ch++) begin : g_unpack
+        assign win_word[8*ch +: 8] = {1'b0, in_range ? win_raw[7*ch +: 7] : 7'd0};
+    end
     assign act = $signed(win_word[8*(IN_CH-1-w_ci) +: 8]);
 
     // lane sequencing: shared multiplier in MAC, shared requantiser in EMIT
