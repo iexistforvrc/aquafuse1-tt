@@ -23,7 +23,7 @@ module aquafuse_icg (
 );
 `ifdef AQUAFUSE_GF180_ICG
     gf180mcu_fd_sc_mcu7t5v0__icgtp_1 u_cg (
-        .TE(1'b0), .E(en), .CLK(clk), .Q(gclk)
+        .TE(en), .E(en), .CLK(clk), .Q(gclk)
     );
 `elsif AQUAFUSE_SKY130_ICG
     sky130_fd_sc_hd__dlclkp_1 u_cg (.CLK(clk), .GATE(en), .GCLK(gclk));
