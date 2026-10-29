@@ -136,14 +136,11 @@ module aquafuse_conv_stage #(
     end
     wire cclk;   // gated control clock, see u_ctl below
     always_ff @(posedge cclk) in_q <= in7;
+    wire [ROWS*IN_W-1:0] gclk_v;   // ENERGY: shared enable latch + decoded AND per word (aquafuse_wgate)
+    aquafuse_wgate #(.NS(ROWS), .NC(IN_W)) u_wg (.clk(clk), .en(in_valid), .slot(wr_slot), .col(in_col), .gclk(gclk_v));
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
         for (genvar c = 0; c < IN_W; c++) begin : g_col
-            logic gclk;
-            aquafuse_icg u_cg (
-                .clk (clk),
-                .en  (in_valid && wr_slot == SLW'(s) && in_col == ($clog2(IN_W))'(c)),
-                .gclk(gclk)
-            );
+            wire gclk = gclk_v[s*IN_W + c];
             logic [WB-1:0] word;
             aquafuse_lat #(.W(WB)) u_lat (.en(gclk), .d(in_q), .q(word));
             assign rowmem[(s*IN_W + c)*WB +: WB] = word;

@@ -79,14 +79,11 @@ module aquafuse_temporal_head #(
     logic [MW-1:0] wr_q;
     wire hclk;   // gated control clock, see u_hctl below
     always_ff @(posedge hclk) wr_q <= wr_narrow;
+    wire [K*N-1:0] gclk_v;   // ENERGY: shared enable latch + decoded AND per cell (aquafuse_wgate)
+    aquafuse_wgate #(.NS(K), .NC(N)) u_wg (.clk(clk), .en(wr_en), .slot(wslot), .col(wr_idx), .gclk(gclk_v));
     for (genvar s = 0; s < K; s++) begin : g_slot
         for (genvar c = 0; c < N; c++) begin : g_cell
-            logic gclk;
-            aquafuse_icg u_cg (
-                .clk (clk),
-                .en  (wr_en && wslot == 2'(s) && wr_idx == ($clog2(N))'(c)),
-                .gclk(gclk)
-            );
+            wire gclk = gclk_v[s*N + c];
             logic [MW-1:0] word;
             aquafuse_lat #(.W(MW)) u_lat (.en(gclk), .d(wr_q), .q(word));
             assign ring[(s*N + c)*MW +: MW] = word;

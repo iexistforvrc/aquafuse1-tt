@@ -19,6 +19,7 @@ project:
   source_files:
     - "aquafuse_icg.sv"
     - "aquafuse_lat.sv"
+    - "aquafuse_wgate.sv"
     - "aquafuse_sel.sv"
     - "aquafuse_sensor_if.sv"
     - "aquafuse_stem_accum.sv"

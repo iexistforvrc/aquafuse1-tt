@@ -90,13 +90,12 @@ module aquafuse_bg_store #(
     // cycle and on no other.
     logic [WD-1:0] upd_q;
     always_ff @(posedge clk) upd_q <= upd_word;
+    // ENERGY: one shared enable/index latch + a decoded AND per entry (aquafuse_wgate) instead
+    // of one clock gate per entry; the gates cost clock-pin power every cycle.
+    wire [ENTRIES-1:0] gclk_v;
+    aquafuse_wgate #(.NS(1), .NC(ENTRIES)) u_wg (.clk(clk), .en(rd_en), .slot(1'b0), .col(addr), .gclk(gclk_v));
     for (genvar e = 0; e < ENTRIES; e++) begin : g_ent
-        logic gclk;
-        aquafuse_icg u_cg (
-            .clk (clk),
-            .en  (rd_en && addr == ($clog2(ENTRIES))'(e)),
-            .gclk(gclk)
-        );
+        wire gclk = gclk_v[e];
         // GF180 AREA: a level-sensitive latch is ~30% smaller than a flop. It is
         // transparent while gclk is high, so it must be fed from a register, not
         // from upd_word: upd_word reads this very latch, which would be a loop.
