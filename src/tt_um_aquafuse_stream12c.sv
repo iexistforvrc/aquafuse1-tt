@@ -88,7 +88,7 @@ module tt_um_aquafuse_stream12c #(
     // what DR 0070 recommends and ebe7587 made the stage correct for.
     localparam int B2_OH  = B1_OH;                                   // 4
     localparam int B2_OW  = B1_OW;                                   // 7
-    localparam int STEM_ACC_W = 21;
+    localparam int STEM_ACC_W = 20;   // worst case 414,208 (scripts/vps/acc_bounds.py), was 21
     localparam int POOL_W     = 20;
 
     // PIN MAP.
@@ -405,7 +405,7 @@ module tt_um_aquafuse_stream12c #(
         .addr(a_b2), .word(w2_data));
 
     aquafuse_conv_stage #(.IN_H(S_OH), .IN_W(S_OW), .IN_CH(STEM_C),
-                          .OUT_CH(B1_CH), .STRIDE(2)) u_b1 (
+                          .OUT_CH(B1_CH), .STRIDE(2), .ACC_W(20)) u_b1 (   // worst case 275,225
         .clk(clk), .rst_n(rstn),
         .in_valid(stem_flush), .in_row(stem_row), .in_col(flush_col),
         .in_data(stem_byte),
@@ -416,7 +416,7 @@ module tt_um_aquafuse_stream12c #(
         .out_data(s1_data), .busy(s1_busy));
 
     aquafuse_conv_stage #(.IN_H(B1_OH), .IN_W(B1_OW), .IN_CH(B1_CH),
-                          .OUT_CH(B2_CH), .STRIDE(1)) u_b2 (
+                          .OUT_CH(B2_CH), .STRIDE(1), .ACC_W(19)) u_b2 (   // worst case 259,313
         .clk(clk), .rst_n(rstn),
         .in_valid(s1_valid), .in_row(s1_row[$clog2(B1_OH)-1:0]),
         .in_col(s1_col[$clog2(B1_OW)-1:0]), .in_data(s1_data),
