@@ -104,6 +104,7 @@ jobs:
             librelane/runs/*/*-checker-disconnectedpins/**
             librelane/runs/*/*-openroad-detailedrouting/reports/**
             librelane/runs/*/*-openroad-globalplacement/*.log
+            librelane/runs/*/*-openroad-cts/*.log
           if-no-files-found: warn
       - name: Create summary
         if: success() || failure()
