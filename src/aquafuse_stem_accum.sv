@@ -139,10 +139,12 @@ module aquafuse_stem_accum #(
         aquafuse_icg u_cg (.clk(clk), .en(en_p), .gclk(gclk));
         for (genvar l = 0; l < COUT; l++) begin : g_lane
             logic signed [ACC_W-1:0] r;
-            always_ff @(posedge gclk or negedge rst_n) begin
-                if (!rst_n)                     r <= ACC_ZERO;
-                else if (bank_clear || !sel_mac) r <= ACC_ZERO;
-                else                            r <= acc_next[l];
+            // NO RESET (GF180 area: dffq is 15% smaller than dffrnq). Every frame opens with
+            // bank_clear (frame_start), which clocks and zeroes every column before the
+            // first MAC or read of that frame, so the power-up value is never used.
+            always_ff @(posedge gclk) begin
+                if (bank_clear || !sel_mac) r <= ACC_ZERO;
+                else                        r <= acc_next[l];
             end
             assign acc_flat[(p*COUT + l)*ACC_W +: ACC_W] = r;
         end
