@@ -135,7 +135,11 @@ module aquafuse_conv_stage #(
         assign in7[7*ch +: 7] = in_data[8*ch +: 7];
     end
     wire cclk;   // gated control clock, see u_ctl below
-    always_ff @(posedge cclk) in_q <= in7;
+    // ENERGY: in_q is only read by the word latches on a write beat, so it is clocked on in_valid alone
+    // (it rode cclk, which also runs through the whole MAC/EMIT sequence).
+    wire iqclk;
+    aquafuse_icg u_iq (.clk(clk), .en(in_valid), .gclk(iqclk));
+    always_ff @(posedge iqclk) in_q <= in7;
     wire [ROWS*IN_W-1:0] gclk_v;   // ENERGY: shared enable latch + decoded AND per word (aquafuse_wgate)
     aquafuse_wgate #(.NS(ROWS), .NC(IN_W)) u_wg (.clk(clk), .en(in_valid), .slot(wr_slot), .col(in_col), .gclk(gclk_v));
     for (genvar s = 0; s < ROWS; s++) begin : g_slot
@@ -205,7 +209,7 @@ module aquafuse_conv_stage #(
     logic [$clog2(IN_H)-1:0] orow_q;
     logic [$clog2(IN_W)-1:0] ocol_q;
     logic [$clog2(TAPS+1)-1:0] tap_q;
-    logic signed [ACC_W-1:0]  acc [OUT_CH-1:0];
+    wire signed [ACC_W-1:0]  acc [OUT_CH-1:0];   // each lane in its own gated block (g_lane below)
     logic signed [ACC_W-1:0]  bias_seed [OUT_CH-1:0];
     for (genvar l = 0; l < OUT_CH; l++) begin : g_bias
         assign bias_seed[l] = ACC_W'($signed(cfg_bias[32*(OUT_CH-1-l) +: 32]));
@@ -279,12 +283,33 @@ module aquafuse_conv_stage #(
                                    cfg_shift[5*(OUT_CH-1-lane_q) +: 5], cfg_relu);
     end
 
+    // ENERGY: one gated clock per LANE for the accumulator and the output byte. The MAC feeds one lane
+    // per cycle and the requantiser emits one lane per cycle, so clocking all OUT_CH accumulators and
+    // all output bytes on every cycle (cclk) paid the flop clock pin 6x for one useful write
+    // (measured: these ~4.4 uW-per-cell flops were the stage's whole power; the latch store is ~0.5 nW).
+    // Same values in the same order as the cclk version, so the results are bit-identical.
+    wire load_all = ((st == IDLE) && ready_now) || ((st == EMIT) && (lane_q == LW'(OUT_CH-1)));
+    for (genvar l = 0; l < OUT_CH; l++) begin : g_lane
+        wire aclk, oclk;
+        aquafuse_icg u_acg (.clk(clk), .en(load_all || ((st == MAC) && (lane_q == LW'(l)))), .gclk(aclk));
+        aquafuse_icg u_ocg (.clk(clk), .en((st == EMIT) && (lane_q == LW'(l))), .gclk(oclk));
+        logic signed [ACC_W-1:0] a_q;
+        logic [7:0] o_q;
+        always_ff @(posedge aclk or negedge rst_n) begin
+            if (!rst_n)        a_q <= '0;
+            else if (load_all) a_q <= bias_seed[l];
+            else               a_q <= a_q + mac_prod;
+        end
+        always_ff @(posedge oclk) o_q <= emit_byte;
+        assign acc[l] = a_q;
+        assign out_data[8*(OUT_CH-1-l) +: 8] = o_q;
+    end
+
     always_ff @(posedge cclk or negedge rst_n) begin
         if (!rst_n) begin
             st <= IDLE; orow_q <= '0; ocol_q <= '0; tap_q <= '0; lane_q <= '0;
             orow_ptr <= '0;
             out_valid <= 1'b0; busy <= 1'b0;
-            for (int l = 0; l < OUT_CH; l++) acc[l] <= '0;
         end else begin
             out_valid <= 1'b0;
             case (st)
@@ -297,7 +322,6 @@ module aquafuse_conv_stage #(
                         orow_q   <= ($clog2(IN_H))'(orow_ptr);
                         orow_ptr <= orow_ptr + 1'b1;
                         ocol_q <= '0; tap_q <= '0; busy <= 1'b1;
-                        for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
                         st <= MAC;
                     end
                 end
@@ -306,8 +330,7 @@ module aquafuse_conv_stage #(
                     // takes this tap; each lane still sums its taps in the same order,
                     // so the result is bit-identical. The clock is stopped between
                     // frames and a frame has far more cycles than this needs.
-                    for (int l = 0; l < OUT_CH; l++)
-                        if (lane_q == LW'(l)) acc[l] <= acc[l] + mac_prod;
+                    // (the lane's accumulator is updated in g_lane above)
                     if (lane_q == LW'(OUT_CH-1)) begin
                         lane_q <= '0;
                         if (tap_q == TAPS-1) st <= EMIT;
@@ -317,15 +340,12 @@ module aquafuse_conv_stage #(
                 EMIT: begin
                     // One requantiser, one lane per cycle; out_valid rises with the
                     // last lane so the consumer sees the whole word at once.
-                    for (int l = 0; l < OUT_CH; l++)
-                        if (lane_q == LW'(l))
-                            out_data[8*(OUT_CH-1-l) +: 8] <= emit_byte;
+                    // (the lane's output byte is written in g_lane above)
                     if (lane_q == LW'(OUT_CH-1)) begin
                         lane_q    <= '0;
                         out_valid <= 1'b1;
                         out_row   <= orow_q;
                         out_col   <= ocol_q;
-                        for (int l = 0; l < OUT_CH; l++) acc[l] <= bias_seed[l];
                         tap_q <= '0;
                         if (ocol_q == OUT_W-1) st <= IDLE;
                         else begin ocol_q <= ocol_q + 1'b1; st <= MAC; end
