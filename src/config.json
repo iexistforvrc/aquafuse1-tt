@@ -20,6 +20,7 @@
   "CTS_MAX_CAP": 2.0,
   "CTS_MAX_SLEW": 3.0,
   "CTS_CLK_BUFFERS": ["gf180mcu_fd_sc_mcu7t5v0__clkbuf_2"],
+  "CTS_ROOT_BUFFER": "gf180mcu_fd_sc_mcu7t5v0__clkbuf_4",
   "CTS_SINK_CLUSTERING_MAX_DIAMETER": 300,
   "PL_MAX_DISPLACEMENT_X": 700,
   "PL_MAX_DISPLACEMENT_Y": 700,
