@@ -89,7 +89,10 @@ module aquafuse_bg_store #(
     // entry is written once per frame, so its flops need a clock on that one
     // cycle and on no other.
     logic [WD-1:0] upd_q;
-    always_ff @(posedge clk) upd_q <= upd_word;
+    // ENERGY: upd_q only matters on the edge that opens an entry's latch (rd_en), so it is clocked on rd_en alone.
+    wire uclk;
+    aquafuse_icg u_uq (.clk(clk), .en(rd_en), .gclk(uclk));
+    always_ff @(posedge uclk) upd_q <= upd_word;
     // ENERGY: one shared enable/index latch + a decoded AND per entry (aquafuse_wgate) instead
     // of one clock gate per entry; the gates cost clock-pin power every cycle.
     wire [ENTRIES-1:0] gclk_v;

@@ -111,7 +111,14 @@ module aquafuse_sensor_if #(
     logic [$clog2(IMG_W)-1:0]    col_q;
     logic                        bad;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    // ENERGY: everything below changes only on a VSYNC edge, a PCLK edge, or the cycle after one
+    // of its one-cycle pulses (which must clear), so it is clocked on exactly those cycles. The
+    // synchronisers above stay on the free-running clock.
+    wire sclk;
+    aquafuse_icg u_sg (.clk(clk),
+        .en(vsync_rise | vsync_fall | pclk_rise | frame_start | frame_end | pix_valid), .gclk(sclk));
+
+    always_ff @(posedge sclk or negedge rst_n) begin
         if (!rst_n) begin
             count <= '0; row_q <= '0; col_q <= '0;
             in_frame <= 1'b0; bad <= 1'b0;
