@@ -5,7 +5,7 @@ project:
   discord:      ""
   description:  "Sensor-direct always-on fish-presence wake gate: streaming INT8 CNN with a background model and a temporal head, no companion chip"
   language:     "SystemVerilog"
-  clock_hz:     16666666      # DR0109 experimental 60 ns target; NOT signed off until candidate reports pass
+  clock_hz:     6250000      # 160 ns period: the 60 ns target missed setup by 62 ns in the SS 125C corner (run 40981753583); rated max clock, deployment clock stays <= ~390 kHz (DR 0108)
 
   # TTGF26c allows at most 4x4. Its 350 x 160 um tiles make this a 1.4 x 0.64 mm
   # capacity probe. It is not a release candidate until GF180 physical and electrical
