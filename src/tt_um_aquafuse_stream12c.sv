@@ -559,6 +559,10 @@ module tt_um_aquafuse_stream12c #(
     // head itself needs one cycle; the requirement did not disappear, it moved
     // upstream to the stage -- and it got THIRTY TIMES LARGER.
     //
+    // NOTE 30 Oct 2026 (GF180 candidate, serial convolution lanes): the figures below (269, 9) belong to the
+    // parallel-lane build. The serial build answers 6,173 clocks after VSYNC falls (tests/rtl/tb_stream12c_stress.sv
+    // scenario 7); blanking shorter than that silently drops the previous frame result. Keep >= 8,000.
+    //
     // MEASURED MINIMUM VERTICAL BLANKING: 269 CORE CLOCKS at 4 core clocks per
     // pixel, by bisection in tb_stream12b_logit (268 fails, 269 passes). The
     // deployed arm's figure is 9. Below the boundary a frame yields NO
