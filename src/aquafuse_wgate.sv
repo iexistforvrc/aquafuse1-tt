@@ -27,7 +27,14 @@ module aquafuse_wgate #(
     wire        en_l;
     wire [SW-1:0] slot_l;
     wire [CW-1:0] col_l;
-    aquafuse_lat #(.W(1 + SW + CW)) u_idx (.en(clk_n), .d({en, slot, col}), .q({en_l, slot_l, col_l}));
+    // ENERGY: a latch whose enable toggles every cycle costs ~4 uW of clock-pin power whether or not it
+    // changes. Only the enable latch must follow `en` every cycle (it is the one that says "no write").
+    // The slot/column latches are opened (clk low AND en) only in cycles that will write, and hold a stale
+    // index otherwise, which is harmless because en_l is then low. `en` is launched by a flop on the
+    // rising edge and settles while clk is high, so clk_n & en is a proper clock-gating AND (STA checks it).
+    aquafuse_lat #(.W(1)) u_en (.en(clk_n), .d(en), .q(en_l));
+    wire iclk_n = clk_n & en;
+    aquafuse_lat #(.W(SW + CW)) u_idx (.en(iclk_n), .d({slot, col}), .q({slot_l, col_l}));
 
     for (genvar s = 0; s < NS; s++) begin : g_s
         wire sel_s = (slot_l == SW'(s));
